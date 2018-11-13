@@ -54,18 +54,44 @@ annotation <- as.data.frame(gtf)
 annotation <- annotation[!duplicated(annotation), ]
 annotation <- makeGRangesFromDataFrame(annotation, keep.extra.columns = T)
 
-anno <- plyr::adply(unique(annotation$gene_id),
+###################################################################
+###################################################################
+## LC EDITS
+#- some gene_ids are NA, so add na.omit
+#- not all the gft's have gene_name, so correct that
+#- replace '== x' with '%in% x' or it crashes
+###################################################################
+#anno <- plyr::adply(unique(annotation$gene_id),
+#                    .margins = 1,
+#                    function(x) {
+#                        aux <- reduce(annotation[annotation$gene_id == x])
+#                        aux$symbol <- unique(annotation[annotation$gene_id == x]$gene_name)
+#                        aux$gene_id <- x
+#                        df <- as.data.frame(aux)
+#                        # For some ENSG genes, there is a small gap between transcripts
+#                        df$start <- min(df$start)
+#                        df$end <- max(df$end)
+#                        df
+#                    }, .id = NULL, .parallel = TRUE)
+anno <- plyr::adply(unique(na.omit(annotation$gene_id)),
                     .margins = 1,
                     function(x) {
-                        aux <- reduce(annotation[annotation$gene_id == x])
-                        aux$symbol <- unique(annotation[annotation$gene_id == x]$gene_name)
+			aux <- reduce(annotation[annotation$gene_id %in% x])
+			if(is.null(annotation$gene_name)){
+                        	aux$symbol <- unique(annotation[annotation$gene_id %in% x]$gene_id)
+			}else{
+                        	aux$symbol <- unique(annotation[annotation$gene_id %in% x]$gene_name)
+			}
                         aux$gene_id <- x
                         df <- as.data.frame(aux)
                         # For some ENSG genes, there is a small gap between transcripts
-                        df$start <- min(df$start)
-                        df$end <- max(df$end)
+                        df$start <- min(df$start, na.rm=T)
+                        df$end <- max(df$end, na.rm=T)
                         df
                     }, .id = NULL, .parallel = TRUE)
+###################################################################
+###################################################################
+
 
 annoData <- unique(makeGRangesFromDataFrame(anno, keep.extra.columns = T))
 names(annoData) <- annoData$gene_id

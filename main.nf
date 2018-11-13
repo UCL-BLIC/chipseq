@@ -20,7 +20,8 @@ Pipeline overview:
  - 3.2: Post-alignment processing and format conversion
  - 3.3: Statistics about mapped reads
  - 4:   Picard for duplicate read identification
- - 5:   Statistics about read counts
+ - 5.1: Statistics about read counts
+ - 5.2  dedup BAMs to BigWigs
  - 6.1: Phantompeakqualtools for normalized strand cross-correlation (NSC) and relative strand cross-correlation (RSC)
  - 6.2: Summarize NSC and RSC
  - 7:   deepTools for fingerprint, coverage bigwig, and correlation plots of reads over genome-wide bins
@@ -55,10 +56,12 @@ def helpMessage() {
       --allow_multi_align           Secondary alignments and unmapped reads are also reported in addition to primary alignments
       --saturation                  Run saturation analysis by peak calling with subsets of reads
       --broad                       Run MACS with the --broad flag
+      --bampe                       Run MACS with the --f BAMPE flag (default: -f BAM)
       --blacklist_filtering         Filter ENCODE blacklisted regions from ChIP-seq peaks. It only works when --genome is set as GRCh37 or GRCm38
 
     Presets:
       --extendReadsLen [int]        Number of base pairs to extend the reads for the deepTools analysis. Default: 100
+      --nomodelExtsize [int]        Sets '--nomodel' in MACS, and sets the extsize (poarameter used to extend reads in 5'->3' direction to fix-sized fragments)
 
     References
       --fasta                       Path to Fasta reference
@@ -195,6 +198,7 @@ Channel
 def REF_macs = false
 def REF_ngsplot = false
 if (params.genome == 'GRCh37'){ REF_macs = 'hs'; REF_ngsplot = 'hg19' }
+else if (params.genome == 'GRCh38'){ REF_macs = 'hs'; REF_ngsplot = 'hg38' }
 else if (params.genome == 'GRCm38'){ REF_macs = 'mm'; REF_ngsplot = 'mm10' }
 
 
@@ -219,6 +223,8 @@ summary['Multiple alignments'] = params.allow_multi_align
 summary['MACS Config']         = params.macsconfig
 summary['Saturation analysis'] = params.saturation
 summary['MACS broad peaks']    = params.broad
+summary['MACS -f BAMPE']       = params.bampe
+summary['MACS nomodel,extsize']        = params.nomodelExtsize
 summary['Blacklist filtering'] = params.blacklist_filtering
 if( params.blacklist_filtering ) summary['Blacklist BED'] = params.blacklist
 summary['Extend Reads']        = "$params.extendReadsLen bp"
@@ -284,7 +290,7 @@ if (!REF_macs){
              "  WARNING! $warnstring MACS, ngs_plot\n" +
              "  and annotation. Steps for MACS, ngs_plot and annotation\n" +
              "  will be skipped. Use '--genome GRCh37' or '--genome GRCm38'\n" +
-             "  to run these steps.\n" +
+             "  or '--genome GRCh38' to run these steps.\n" +
              "==============================================================="
 }
 
@@ -469,8 +475,8 @@ process picard {
     file bam from bam_picard
 
     output:
-    file '*.dedup.sorted.bam' into bam_dedup_spp, bam_dedup_ngsplot, bam_dedup_deepTools, bam_dedup_macs, bam_dedup_saturation
-    file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation
+    file '*.dedup.sorted.bam' into bam_dedup_spp, bam_dedup_ngsplot, bam_dedup_deepTools, bam_dedup_macs, bam_dedup_saturation, bam_dedup_bigwigs
+    file '*.dedup.sorted.bam.bai' into bai_dedup_deepTools, bai_dedup_ngsplot, bai_dedup_macs, bai_dedup_saturation, bai_dedup_bigwigs
     file '*.dedup.sorted.bed' into bed_dedup
     file '*.picardDupMetrics.txt' into picard_reports
 
@@ -507,7 +513,7 @@ process picard {
 
 
 /*
- * STEP 5 Read_count_statistics
+ * STEP 5.1 Read_count_statistics
  */
 
 process countstat {
@@ -523,6 +529,32 @@ process countstat {
     script:
     """
     countstat.pl $input
+    """
+}
+
+/*
+ * STEP 5.2 Create bigWigs
+ */
+
+process bigwigs {
+    tag "$prefix"
+    publishDir "${params.outdir}/bigwigs", mode: 'copy'
+
+    input:
+    file bam from bam_dedup_bigwigs
+    file bai from bai_dedup_bigwigs
+
+    output:
+    file '*.bw'
+
+    script:
+    prefix = bam[0].toString() - ~/(\.dedup)?(\.sorted)?(\.bam)?$/
+    fasta=params.fasta
+    fastafai="${fasta}.fai"
+    """
+    bedtools genomecov -bg -ibam $bam -g $fastafai > ${prefix}.bdg
+    LC_COLLATE=C sort -k1,1 -k2,2n ${prefix}.bdg > ${prefix}.sorted.bdg
+    bedGraphToBigWig ${prefix}.sorted.bdg $fastafai ${prefix}.bw
     """
 }
 
@@ -746,12 +778,15 @@ process macs {
     script:
     def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.dedup.sorted.bam"
     broad = params.broad ? "--broad" : ''
+    bampe = params.bampe ? "-f BAMPE" : '-f BAM'
+    nomodelExtsize = params.nomodelExtsize ? "--nomodel --extsize ${params.nomodelExtsize}" : ''
     """
     macs2 callpeak \\
         -t ${chip_sample_id}.dedup.sorted.bam \\
         $ctrl \\
         $broad \\
-        -f BAM \\
+        $nomodelExtsize \\
+        $bampe \\
         -g $REF_macs \\
         -n $analysis_id \\
         -q 0.01
@@ -782,18 +817,22 @@ if (params.saturation) {
      script:
      def ctrl = ctrl_sample_id == '' ? '' : "-c ${ctrl_sample_id}.dedup.sorted.bam"
      broad = params.broad ? "--broad" : ''
+     bampe = params.bampe ? "-f BAMPE" : '-f BAM'
+     nomodelExtsize = params.nomodelExtsize ? "--nomodel --extsize ${params.nomodelExtsize}" : ''        
      """
      samtools view -b -s ${sampling} ${chip_sample_id}.dedup.sorted.bam > ${chip_sample_id}.${sampling}.dedup.sorted.bam
      macs2 callpeak \\
          -t ${chip_sample_id}.${sampling}.dedup.sorted.bam \\
          $ctrl \\
          $broad \\
-         -f BAM \\
+         $nomodelExtsize \\
+         $bampe \\
          -g $REF_macs \\
          -n ${analysis_id}.${sampling} \\
          -q 0.01
      """
   }
+
 
   process saturation_r {
      tag "${saturation_results_collection[0].baseName}"
