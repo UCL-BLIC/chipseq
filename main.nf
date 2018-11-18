@@ -482,7 +482,7 @@ process picard {
 
     script:
     prefix = bam[0].toString() - ~/(\.sorted)?(\.bam)?$/
-    if( task.memory == null ){
+    if( !task.memory ){
         log.warn "[Picard MarkDuplicates] Available memory not known - defaulting to 6GB ($prefix)"
         avail_mem = 6000
     } else {
