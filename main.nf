@@ -109,6 +109,26 @@ params.bwa_index = params.genome ? params.genomes[ params.genome ].bwa ?: false 
 params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
 params.blacklist = params.genome ? params.genomes[ params.genome ].blacklist ?: false : false
 
+params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
+params.version = 1.3
+params.singleEnd = false 
+params.reads = "data/*{1,2}*.fastq.gz"
+params.macsconfig = "data/macsconfig"
+params.extendReadsLen = 100
+params.nomodelExtsize = false
+params.notrim = false
+params.allow_multi_align = false
+params.saveReference = false
+params.saveTrimmed = false
+params.saveAlignedIntermediates = false
+params.saturation = false
+params.broad = false
+params.bampe = false
+params.blacklist_filtering = false
+params.outdir = './results'
+params.email = false
+params.plaintext_email = false
+
 // R library locations
 params.rlocation = false
 if (params.rlocation){
@@ -128,15 +148,17 @@ params.three_prime_clip_r2 = 0
 // Validate inputs
 macsconfig = file(params.macsconfig)
 if( !macsconfig.exists() ) exit 1, "Missing MACS config: '$macsconfig'. Specify path with --macsconfig"
+if( !params.genome ){
+    exit 1, "No reference genome specified!"
+}
 if( params.bwa_index ){
     bwa_index = Channel
         .fromPath(params.bwa_index)
         .ifEmpty { exit 1, "BWA index not found: ${params.bwa_index}" }
-} else if ( params.fasta ){
+}
+if ( params.fasta ){
     fasta = file(params.fasta)
     if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
-} else {
-    exit 1, "No reference genome specified!"
 }
 gtf = false
 if( params.gtf ){
@@ -217,7 +239,7 @@ summary['Reads']               = params.reads
 summary['Data Type']           = params.singleEnd ? 'Single-End' : 'Paired-End'
 summary['Genome']              = params.genome
 if(params.bwa_index)  summary['BWA Index'] = params.bwa_index
-else if(params.fasta) summary['Fasta Ref'] = params.fasta
+if(params.fasta) summary['Fasta Ref'] = params.fasta
 if(params.gtf)  summary['GTF File'] = params.gtf
 summary['Multiple alignments'] = params.allow_multi_align
 summary['MACS Config']         = params.macsconfig
