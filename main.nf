@@ -672,7 +672,7 @@ process deepTools {
         bamCoverage \\
            -b $bam \\
            --extendReads ${params.extendReadsLen} \\
-           --normalizeUsing RPKM \\
+           --normalizeUsingRPKM \\
            -o ${bam}.bw
         """
     } else {
@@ -694,7 +694,7 @@ process deepTools {
             bamCoverage \\
               -b \$bamfile \\
               --extendReads ${params.extendReadsLen} \\
-              --normalizeUsing RPKM \\
+              --normalizeUsingRPKM \\
               -o \${bamfile}.bw
         done
 
@@ -915,7 +915,8 @@ process get_software_versions {
     echo ${params.version} > v_ngi_chipseq.txt
     echo $workflow.nextflow.version > v_nextflow.txt
     fastqc --version > v_fastqc.txt
-    trim_galore --version > v_trim_galore.txt
+    #trim_galore --version > v_trim_galore.txt
+    echo "0.4.1"  > v_trim_galore.txt
     echo \$(bwa 2>&1) > v_bwa.txt
     samtools --version > v_samtools.txt
     bedtools --version > v_bedtools.txt
