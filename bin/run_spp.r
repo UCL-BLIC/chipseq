@@ -650,7 +650,11 @@ if (! is.na(iparams$control.file)) {
 }
 
 # Load SPP library
-library(spp)
+if (!require("spp")) {
+    source("http://bioconductor.org/biocLite.R")
+    biocLite("spp", suppressUpdates = TRUE)
+    library("spp")
+}
 
 # Read ChIP tagAlign/BAM files
 cat("Reading ChIP tagAlign/BAM file",iparams$chip.file,"\n",file=stdout())
