@@ -672,7 +672,7 @@ process deepTools {
         bamCoverage \\
            -b $bam \\
            --extendReads ${params.extendReadsLen} \\
-           --normalizeUsingRPKM \\
+           --normalizeUsing RPKM \\
            -o ${bam}.bw
         """
     } else {
@@ -694,7 +694,7 @@ process deepTools {
             bamCoverage \\
               -b \$bamfile \\
               --extendReads ${params.extendReadsLen} \\
-              --normalizeUsingRPKM \\
+              --normalizeUsing RPKM \\
               -o \${bamfile}.bw
         done
 
