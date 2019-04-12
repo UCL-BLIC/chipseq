@@ -24,12 +24,16 @@
 
 ## Running the pipeline
 The typical command for running the pipeline is as follows:
-
 ```bash
-nextflow run nf-core/chipseq --reads '*_R{1,2}.fastq.gz' --macsconfig 'macssetup.config'
+module load blic-modules
+module load nextflow
+
+nextflow_chipseq --reads '*_R{1,2}.fastq.gz' --genome GRCh38
 ```
 
-Note that the pipeline will create files in your working directory:
+This will launch the pipeline with the `legion` or `myriad` configuration profile, depending on where you submit the job from.
+
+Note that the pipeline will create the following files in your working directory:
 
 ```bash
 work            # Directory containing the nextflow working files
@@ -37,20 +41,6 @@ results         # Finished results (configurable, see below)
 .nextflow_log   # Log file from Nextflow
 # Other nextflow hidden files, eg. history of pipeline runs and old logs.
 ```
-
-### Updating the pipeline
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
-
-```bash
-nextflow pull nf-core/chipseq
-```
-
-### Reproducibility
-It's a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
-
-First, go to the [nf-core/chipseq releases page](https://github.com/nf-core/chipseq/releases) and find the latest version number - numeric only (eg. `1.4`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.4`.
-
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when youook back in the future.
 
 ## Input Data
 
@@ -121,32 +111,13 @@ Default: `100`
 ## Reference Genomes
 
 ### `--genome`
-The reference genome to use for the analysis, needs to be one of the genome specified in the config file. This is `False` by default and needs to be specified (unless index files are supplied, see below).
-
-_Currently only the human and mouse genomes are fully supported by this pipeline. For other genomes `MACS` and `NGSplot` will not run!_
+The reference genome to use for the analysis, needs to be one of the genome specified in the config file.
 
 * Human
   * `--genome GRCh37`
+  * `--genome GRCh38`
 * Mouse
   * `--genome GRCm38`
-
-See [`conf/uppmax.config`](conf/uppmax.config) for a list of the reference genomes and their keys.
-
-If you're not running on UPPMAX (the default profile), you can create your own config file with paths to your reference genomes. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for instructions on where to add this.
-
-The syntax for this reference configuration is as follows:
-
-```nextflow
-params {
-  genomes {
-    'GRCh37' {
-        bwa = '<path to the bwa index folder>'
-        fasta = '<path to the fasta file>' // used if bwa index not given
-    }
-    // Any number of additional genomes, key is used with --genome
-  }
-}
-```
 
 ### `--bwa_index`
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
@@ -216,9 +187,6 @@ To adjust these limits, specify them on the command line, eg. `--max_memory '64.
 
 Note that these limits are the maximum to be used _per task_. Nextflow will automatically attempt to parallelise as many jobs as possible given the available resources.
 
-
-### Custom resource requests
-Wherever process-specific requirements are set in the pipeline, the default value can be changed by creating a custom config file. See the files in [`conf`](../conf) for examples.
 
 ## Other command line parameters
 ### `--outdir`
