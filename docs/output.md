@@ -14,6 +14,7 @@ and processes data using the following steps:
 * [SAMtools](#samtools) - alignment result processing
 * [Bedtools](#bedtools) - bam to bed file conversion
 * [Picard](#picard) - duplicate reads removal
+* [bigwig](#bigwig) - create bigwigs
 * [Phantompeakqualtools](#phantompeakqualtools) - normalized strand cross-correlation (NSC) and relative strand cross-correlation (RSC)
 * [deepTools](#deeptools) - fingerprint and correlation plots of reads over genome-wide bins
 * [NGSplot](#ngsplot) - distribution of reads around transcription start sites (TSS) and gene bodies
@@ -89,6 +90,11 @@ The Picard section of the MultiQC report shows a bar plot with the numbers and p
   * The sorted aligned BED file after duplicate removal
 * `sample.picardDupMetrics.txt`
   * The log report for duplicate removal
+
+## bigwig
+bigwigs of the deduped BAMs are created to be visualized in the UCSC browser.
+
+**Output directory: `results/bigwigs`**
 
 ## Phantompeakqualtools
 [Phantompeakqualtools](https://code.google.com/archive/p/phantompeakqualtools/) plots the strand cross-correlation of aligned reads for each sample. In a strand cross-correlation plot, reads are shifted in the direction of the strand they map to by an increasing number of base pairs and the Pearson correlation between the per-position read count vectors for each strand is calculated. Two cross-correlation peaks are usually observed in a ChIP experiment, one corresponding to the read length ("phantom" peak) and one to the average fragment length of the library. The absolute and relative height of the two peaks are useful determinants of the success of a ChIP-seq experiment. A high-quality IP is characterized by a ChIP peak that is much higher than the "phantom" peak, while often very small or no such peak is seen in failed experiments.
